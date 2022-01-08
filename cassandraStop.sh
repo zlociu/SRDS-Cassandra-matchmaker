@@ -1,0 +1,1 @@
+docker stop srds srds-2 srds-3
