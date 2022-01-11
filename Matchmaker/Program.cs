@@ -1,9 +1,12 @@
 ﻿using System;
 using Cassandra;
+using Cassandra.Mapping;
+
+MappingConfiguration.Global.Define<MatchmakerMappings>();
 
 var cluster = Cluster.Builder()
                      .AddContactPoint("127.0.0.1")
-                     .WithPort(9042)
+                     .WithPort(9043)
                      .Build();
 
 var tmp = cluster.Connect();
@@ -15,30 +18,83 @@ Console.WriteLine(session.Keyspace);
 
 //session.UserDefinedTypes.Define(UdtMap.For<Player>());
 
-session.Execute("CREATE TABLE IF NOT EXISTS Players (Id int, Region text, GameType int, Rank int, PRIMARY KEY (Id))");
+IMapper mapper = new Mapper(session);
 
-session.Execute("INSERT INTO Players (Id, Region, GameType, Rank) VALUES (1,'Europe', 0, 500) IF NOT EXISTS");
+/*
+mapper.Execute("DROP TABLE IF EXISTS Players");
+mapper.Execute("DROP TABLE IF EXISTS Servers");
 
-var rows = session.Execute("SELECT Id, Region, GameType, Rank FROM Players");
+mapper.Execute(Player.CreateTableString);
+mapper.Execute(Server.CreateTableString);
 
-foreach(var row in rows)
+mapper.InsertIfNotExists(new Player{
+    Id = Guid.NewGuid(),
+    Region = "Europe",
+    Rank = 500,
+    GameType = GameType.TeamDeathmatch
+});
+
+mapper.InsertIfNotExists(new Player{
+    Id = Guid.NewGuid(),
+    Region = "Asia",
+    Rank = 300,
+    GameType = GameType.Deathmatch
+});
+
+mapper.InsertIfNotExists(new Player{
+    Id = Guid.NewGuid(),
+    Region = "Europe",
+    Rank = 550,
+    GameType = GameType.TeamDeathmatch
+});
+
+mapper.InsertIfNotExists(new Player{
+    Id = Guid.NewGuid(),
+    Region = "Asia",
+    Rank = 700,
+    GameType = GameType.Extraction
+});
+
+mapper.InsertIfNotExists(new Server{
+    Id = Guid.NewGuid(),
+    Region = "Europe",
+    IPAddr = "77.66.55.44",
+    MaxPlayers = 16,
+    GameType = GameType.Deathmatch
+});
+
+mapper.InsertIfNotExists(new Server{
+    Id = Guid.NewGuid(),
+    Region = "Asia",
+    IPAddr = "222.100.0.33",
+    MaxPlayers = 14,
+    GameType = GameType.Extraction
+});
+*/
+
+//session.Execute("INSERT INTO Players (Id, Region, GameType, Rank) VALUES (1,'Europe', 0, 500) IF NOT EXISTS");
+
+//var rows = session.Execute("SELECT Id, Region, GameType, Rank FROM Players");
+
+var p_rows = mapper.Fetch<Player>("WHERE rank > 300 ALLOW FILTERING");
+
+Console.WriteLine("Players");
+Console.WriteLine(Player.ColumnsNamesString);
+Console.WriteLine("-----------------------------------------------------------------------------------");
+
+foreach(var row in p_rows)
 {
-    Console.WriteLine(row.GetValue<int>(0));
-    Console.WriteLine(row.GetValue<string>(1));
-    Console.WriteLine(row.GetValue<int>(2));
-    Console.WriteLine(row.GetValue<int>(3));
-
-    Console.WriteLine(row[0]);
-    Console.WriteLine(row[1]);
-    Console.WriteLine(row[2]);
-    Console.WriteLine(row[3]);
-
-    Console.WriteLine(row.GetValue<int>("id"));
-    Console.WriteLine(row.GetValue<string>("region"));
-    Console.WriteLine(row.GetValue<int>("gametype"));
-    Console.WriteLine(row.GetValue<int>("rank"));
-    
+    Console.WriteLine(row.ToString());
 }
 
+var s_rows = mapper.Fetch<Server>();
 
+Console.WriteLine("\nServers");
+Console.WriteLine(Server.ColumnsNamesString);
+Console.WriteLine("----------------------------------------------------------------------------------------------------");
+
+foreach(var row in s_rows)
+{
+    Console.WriteLine(row.ToString());
+}
 

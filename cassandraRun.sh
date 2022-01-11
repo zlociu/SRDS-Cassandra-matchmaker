@@ -1,11 +1,16 @@
-docker run --name srds -e CASSANDRA_CLUSTER_NAME=brak_nazwy -p 9042:9042 -d cassandra:latest
-INSTANCE1=$(docker inspect --format='{{ .NetworkSettings.IPAddress }}' srds)
-echo "Instance 1: ${INSTANCE1}"
+docker network create cassandra
 
-docker run --name srds-2 -p 9043:9042 -d -e CASSANDRA_CLUSTER_NAME=brak_nazwy -e CASSANDRA_SEEDS=$INSTANCE1 cassandra:latest
-INSTANCE2=$(docker inspect --format='{{ .NetworkSettings.IPAddress }}' srds-2)
-echo "Instance 2: ${INSTANCE2}"
+docker volume create srds 
+docker volume create srds-2 
+docker volume create srds-3
 
-docker run --name srds-3 -p 9044:9042 -d -e CASSANDRA_CLUSTER_NAME=brak_nazwy -e CASSANDRA_SEEDS=$INSTANCE1 cassandra:latest
-INSTANCE3=$(docker inspect --format='{{ .NetworkSettings.IPAddress }}' srds-3)
-echo "Instance 2: ${INSTANCE3}"
+docker volume ls
+
+docker run --name srds --network cassandra -p 127.0.0.1:9042:9042 -v srds:/var/lib/cassandra -e CASSANDRA_SEEDS=srds,srds-2 -e CASSANDRA_CLUSTER_NAME=brak_nazwy -d cassandra:latest
+
+
+docker run --name srds-2 --network cassandra -p 127.0.0.1:9043:9042 -d -v srds-2:/var/lib/cassandra -e CASSANDRA_CLUSTER_NAME=brak_nazwy -e CASSANDRA_SEEDS=srds,srds-2 cassandra:latest
+
+
+docker run --name srds-3 --network cassandra -p 127.0.0.1:9044:9042 -d -v srds-3:/var/lib/cassandra -e CASSANDRA_CLUSTER_NAME=brak_nazwy -e CASSANDRA_SEEDS=srds,srds-2 cassandra:latest
+
