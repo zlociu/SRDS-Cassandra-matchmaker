@@ -1,0 +1,100 @@
+public class Matchmaker
+{
+    private const double PriorityWeight = 1.0;
+    private const double RankWeight = -1.0;
+    private const double FullnessWeight = 1.0;
+    private const double MinimalMatchQuality = 0.5;
+    private IServerRepository serverRepository;
+    private IMatchRequestRepository matchRequestRepository;
+    private IMatchSuggestionRepository matchSuggestionRepository;
+
+    public Matchmaker(
+        IServerRepository serverRepository,
+        IMatchRequestRepository matchRequestRepository,
+        IMatchSuggestionRepository matchSuggestionRepository
+    )
+    {
+        this.serverRepository = serverRepository;
+        this.matchRequestRepository = matchRequestRepository;
+        this.matchSuggestionRepository = matchSuggestionRepository;
+    }
+
+    private void FindAndAssignMatches(GameType gameType, string region, int requestLimit)
+    {
+        var possibleMatches = FindMatches(gameType, region, requestLimit).OrderByDescending(m => m.Quality);
+        AssignMatches(possibleMatches);
+    }
+
+    private IEnumerable<PossibleMatch> FindMatches(GameType gameType, string region, int requestLimit)
+    {
+        var servers = serverRepository.GetAvailableByGameTypeAndRegion(gameType, region);
+        var assignedPlayers = matchSuggestionRepository.GetByServerIds(servers.Select(s => s.Id));
+        var serverSummaries = GetServerSummaries(servers, assignedPlayers);
+        var requests = matchRequestRepository.GetByGameTypeAndRegion(gameType, region, requestLimit);
+        return FindPossibleMatches(requests, serverSummaries);
+    }
+
+    private void AssignMatches(IOrderedEnumerable<PossibleMatch> possibleMatches)
+    {
+        var assignedPlayers = new HashSet<Guid>();
+        var assignedPlayerCountsByServer = new Dictionary<Guid, int>();
+        foreach (var match in possibleMatches)
+        {
+            if (assignedPlayers.Contains(match.Request.PlayerId)) continue;
+            var assignedPlayerCount = assignedPlayerCountsByServer.GetValueOrDefault(match.Server.Id);
+            if (match.Server.PlayerCount + assignedPlayerCount >= match.Server.MaxPlayers) continue;
+
+            Assign(match.Request, match.Server.Id);
+            assignedPlayers.Add(match.Request.PlayerId);
+            assignedPlayerCountsByServer[match.Server.Id] = assignedPlayerCount + 1;
+        }
+    }
+
+    private IEnumerable<ServerSummary> GetServerSummaries(IEnumerable<Server> servers, IEnumerable<MatchSuggestion> assignedPlayers)
+    {
+        return servers.GroupJoin(assignedPlayers, s => s.Id, p => p.ServerId, (s, p) => GetServerSummary(s, p));
+    }
+
+    private ServerSummary GetServerSummary(Server server, IEnumerable<MatchSuggestion> assignedPlayers)
+    {
+        return new ServerSummary(
+            Id: server.Id,
+            PlayerCount: assignedPlayers.Count(),
+            MaxPlayers: server.MaxPlayers,
+            MeanRank: assignedPlayers.Average(p => (int?)p.PlayerRank)
+        );
+    }
+
+    private IEnumerable<PossibleMatch> FindPossibleMatches(IEnumerable<MatchRequest> matchRequests, IEnumerable<ServerSummary> availableServers)
+    {
+        var allMatches = from matchRequest in matchRequests
+                         from serverSummary in availableServers
+                         select new PossibleMatch(
+                             Request: matchRequest,
+                             Server: serverSummary,
+                             Quality: GetMatchQuality(matchRequest, serverSummary)
+                         );
+        return allMatches.Where(m => m.Quality >= MinimalMatchQuality);
+    }
+
+    private double GetMatchQuality(MatchRequest matchRequest, ServerSummary serverSummary)
+    {
+        return
+            // if a player waits for too long, any match is better than none
+            PriorityWeight * matchRequest.Priority +
+            // PlayerRank closer to the mean means better match, 0 if server is empty
+            RankWeight * Math.Abs(matchRequest.PlayerRank - serverSummary.MeanRank ?? matchRequest.PlayerRank) +
+            // Try to fill a server with some players already waiting before assigning to an empty one
+            FullnessWeight * (double)serverSummary.PlayerCount / serverSummary.MaxPlayers;
+    }
+
+    private void Assign(MatchRequest matchRequest, Guid serverId)
+    {
+        var matchSuggestion = matchRequest.ToMatchSuggestion(serverId);
+        matchSuggestionRepository.Upsert(matchSuggestion);
+        matchRequestRepository.RemoveByPlayerId(matchRequest.PlayerId);
+    }
+
+    private readonly record struct ServerSummary(Guid Id, int PlayerCount, int MaxPlayers, double? MeanRank);
+    private readonly record struct PossibleMatch(MatchRequest Request, ServerSummary Server, double Quality);
+}

@@ -1,18 +1,18 @@
 public record Server
 {
-    public Guid Id {get; init;}
+    public Guid Id { get; init; }
 
-    public string Status {get; init;}
+    public string Status { get; init; }
 
-    public string Region {get; init;}
+    public string Region { get; init; }
 
-    public GameType GameType {get; init;}
+    public GameType GameType { get; init; }
 
-    public int MaxPlayers {get; init;}
+    public int MaxPlayers { get; init; }
 
     public override string ToString()
     {
-        return $"{this.Id}\t{this.Status.PadRight(12,' ')}\t{this.Region}\t\t{((GameType)this.GameType).ToString().PadRight(12,' ')}\t{this.MaxPlayers}";
+        return $"{this.Id}\t{this.Status.PadRight(12, ' ')}\t{this.Region}\t\t{((GameType)this.GameType).ToString().PadRight(12, ' ')}\t{this.MaxPlayers}";
     }
 
     public static string CreateTableString => "CREATE TABLE IF NOT EXISTS Servers (id uuid, status text, region text, gametype int, maxplayers int, PRIMARY KEY ((gametype, region), id))";

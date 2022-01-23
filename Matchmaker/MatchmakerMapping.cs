@@ -43,8 +43,7 @@ public class MatchmakerMappings : Mappings
             .Column(c => c.GameType, n => n.WithName("gametype").WithDbType<int>())
             .Column(c => c.PlayerRank, n => n.WithName("playerrank"))
             .Column(c => c.RequestTimestamp, n => n.WithName("requesttimestamp"))
-            .Column(c => c.ServerId, n => n.WithName("serverid"))
-            .Column(c => c.Team, n => n.WithName("team"));
+            .Column(c => c.ServerId, n => n.WithName("serverid"));
             
     }
     
