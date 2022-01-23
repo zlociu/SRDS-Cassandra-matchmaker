@@ -9,16 +9,17 @@ public class ServerGenerator
 
     public List<Server> GenerateServers(int count)
     {
-        if(count < 1) throw new ArgumentOutOfRangeException();
+        if (count < 1) throw new ArgumentOutOfRangeException();
         List<Server> servers = new List<Server>(count);
 
-        for(int i = 0; i < count; i++)
+        for (int i = 0; i < count; i++)
         {
-            Server server = new Server{
+            Server server = new Server
+            {
                 Id = Guid.NewGuid(),
-                GameType = (_rnd.Next(12)) switch 
+                GameType = (_rnd.Next(12)) switch
                 {
-                    var x when x < 2 => GameType.TeamDeathmatch, 
+                    var x when x < 2 => GameType.TeamDeathmatch,
                     var x when x < 4 => GameType.Deathmatch,
                     var x when x < 6 => GameType.CrashSite,
                     var x when x < 8 => GameType.Extraction,
@@ -27,11 +28,13 @@ public class ServerGenerator
                     _ => GameType.TeamDeathmatch
                 },
                 MaxPlayers = _rnd.Next(3, 5) * 4,
-                Region = (_rnd.Next(5)) switch 
+                Region = (_rnd.Next(5)) switch
                 {
-                    var x when x < 2 => "Europe",
-                    var x when x < 4 => "USA",
-                    _ => "Asia"
+                    var x when x == 0 => Region.EastEurope,
+                    var x when x == 1 => Region.WestEurope,
+                    var x when x == 2 => Region.EastUS,
+                    var x when x == 3 => Region.WestUS,
+                    _ => Region.Asia
                 },
                 Status = "Empty"
 

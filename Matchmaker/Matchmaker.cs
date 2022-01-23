@@ -4,9 +4,11 @@ public class Matchmaker
     private const double RankWeight = -1.0;
     private const double FullnessWeight = 1.0;
     private const double MinimalMatchQuality = 0.5;
+    private const int RequestBatchSize = 100;
     private IServerRepository serverRepository;
     private IMatchRequestRepository matchRequestRepository;
     private IMatchSuggestionRepository matchSuggestionRepository;
+    private List<(GameType, Region)> processingOrder;
 
     public Matchmaker(
         IServerRepository serverRepository,
@@ -17,15 +19,39 @@ public class Matchmaker
         this.serverRepository = serverRepository;
         this.matchRequestRepository = matchRequestRepository;
         this.matchSuggestionRepository = matchSuggestionRepository;
+        processingOrder = GenerateProcessingOrder().ToList();
     }
 
-    private void FindAndAssignMatches(GameType gameType, string region, int requestLimit)
+    public IEnumerable<(GameType, Region)> MatchmakerLoop()
+    {
+        while (true)
+        {
+            foreach (var (gameType, region) in processingOrder)
+            {
+                FindAndAssignMatches(gameType, region, RequestBatchSize);
+                yield return (gameType, region);
+            }
+        }
+    }
+
+    private IEnumerable<(GameType, Region)> GenerateProcessingOrder()
+    {
+        var allGameTypes = Enum.GetValues<GameType>();
+        var allRegions = Enum.GetValues<Region>();
+        var allCombinations = from gameType in allGameTypes
+                              from region in allRegions
+                              select (gameType, region);
+        var random = new Random();
+        return allCombinations.OrderBy(_ => random.Next());
+    }
+
+    private void FindAndAssignMatches(GameType gameType, Region region, int requestLimit)
     {
         var possibleMatches = FindMatches(gameType, region, requestLimit).OrderByDescending(m => m.Quality);
         AssignMatches(possibleMatches);
     }
 
-    private IEnumerable<PossibleMatch> FindMatches(GameType gameType, string region, int requestLimit)
+    private IEnumerable<PossibleMatch> FindMatches(GameType gameType, Region region, int requestLimit)
     {
         var servers = serverRepository.GetAvailableByGameTypeAndRegion(gameType, region);
         var assignedPlayers = matchSuggestionRepository.GetByServerIds(servers.Select(s => s.Id));

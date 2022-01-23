@@ -4,7 +4,7 @@ public record MatchRequest
 
     public int PlayerRank { get; init; }
 
-    public string Region { get; init; }
+    public Region Region { get; init; }
 
     public GameType GameType { get; init; }
 

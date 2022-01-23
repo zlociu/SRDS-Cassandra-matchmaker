@@ -1,4 +1,4 @@
 public interface IServerRepository
 {
-    IEnumerable<Server> GetAvailableByGameTypeAndRegion(GameType gameType, string region);
+    IEnumerable<Server> GetAvailableByGameTypeAndRegion(GameType gameType, Region region);
 }
