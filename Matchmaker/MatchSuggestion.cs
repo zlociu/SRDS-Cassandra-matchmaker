@@ -8,7 +8,7 @@ public record MatchSuggestion
 
     public GameType GameType { get; init; }
 
-    public long RequestTimestamp { get; init; }
+    public DateTimeOffset RequestTimestamp { get; init; }
 
     public Guid ServerId { get; init; }
 

@@ -8,7 +8,7 @@ public record MatchRequest
 
     public GameType GameType { get; init; }
 
-    public long RequestTimestamp { get; init; }
+    public DateTimeOffset RequestTimestamp { get; init; }
 
     public int Priority { get; init; }
 
