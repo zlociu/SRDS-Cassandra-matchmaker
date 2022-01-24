@@ -7,10 +7,10 @@ public class PlayerGerenator
         _rnd = new Random();
     }
 
-    public List<Player> GeneratePlayers(int count)
+    public IEnumerable<Player> GeneratePlayers(int count)
     {
         if(count < 1) throw new ArgumentOutOfRangeException();
-        List<Player> players = new List<Player>(count);
+        List<Player> players = new(count);
 
         for(int i = 0; i < count; i++)
         {
@@ -29,9 +29,11 @@ public class PlayerGerenator
                 Rank = _rnd.Next(1,11) * 100,
                 Region = (_rnd.Next(5)) switch 
                 {
-                    var x when x < 2 => "Europe",
-                    var x when x < 4 => "USA",
-                    _ => "Asia"
+                    var x when x == 0 => Region.EastEurope,
+                    var x when x == 1 => Region.WestEurope,
+                    var x when x == 2 => Region.EastUS,
+                    var x when x == 3 => Region.WestUS,
+                    _ => Region.Asia
                 }
 
             };

@@ -7,10 +7,10 @@ public class ServerGenerator
         _rnd = new Random();
     }
 
-    public List<Server> GenerateServers(int count)
+    public IEnumerable<Server> GenerateServers(int count)
     {
         if (count < 1) throw new ArgumentOutOfRangeException();
-        List<Server> servers = new List<Server>(count);
+        List<Server> servers = new(count);
 
         for (int i = 0; i < count; i++)
         {

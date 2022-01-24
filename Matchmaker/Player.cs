@@ -5,10 +5,7 @@ public record Player
 {
     public Guid Id {get; init;}
 
-    ///<summary>
-    /// Europe, Asia, USA
-    ///</summary>
-    public string Region {get; init;}
+    public Region Region {get; init;}
 
     public GameType GameType {get; init;}
 
