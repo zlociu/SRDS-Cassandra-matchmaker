@@ -39,7 +39,8 @@ public class MatchmakerMappings : Mappings
 
         For<MatchSuggestion>()
             .TableName("MatchSuggestions")
-            .PartitionKey(u => u.ServerId, u => u.PlayerId)
+            .PartitionKey(u => u.ServerId)
+            .ClusteringKey(u => u.PlayerId)
             .Column(c => c.PlayerId, n => n.WithName("playerid"))
             .Column(c => c.Region, n => n.WithName("region").WithDbType<int>())
             .Column(c => c.GameType, n => n.WithName("gametype").WithDbType<int>())
