@@ -12,21 +12,21 @@ public class CassandraMatchRequestRepository : IMatchRequestRepository
 
     public IEnumerable<MatchRequest> GetByGameTypeAndRegion(GameType gameType, Region region, int limit)
     {
-        var randomTokenBound = random.NextInt64();
+        var randomGuid = Guid.NewGuid();
         var firstPart = db.Fetch<MatchRequest>(
-            "WHERE gametype=? AND region=? AND token(gametype, region)>=? LIMIT ?",
+            "WHERE gametype=? AND region=? AND playerid>=? LIMIT ?",
             (int)gameType,
             (int)region,
-            randomTokenBound,
+            randomGuid,
             limit
-        );
-        var secondPart = (firstPart.Count() < limit) ? db.Fetch<MatchRequest>(
-            "WHERE gametype=? AND region=? AND token(gametype, region)<? LIMIT ?",
+        ).ToList();
+        var secondPart = ((firstPart.Count() < limit) ? db.Fetch<MatchRequest>(
+            "WHERE gametype=? AND region=? AND playerid<? LIMIT ?",
             (int)gameType,
             (int)region,
-            randomTokenBound,
+            randomGuid,
             limit - firstPart.Count()
-        ) : Enumerable.Empty<MatchRequest>();
+        ) : Enumerable.Empty<MatchRequest>()).ToList();
         return firstPart.Union(secondPart);
     }
 
