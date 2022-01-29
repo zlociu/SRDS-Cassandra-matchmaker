@@ -17,7 +17,7 @@ public record MatchRequest
         return $"{this.PlayerId}\t{this.PlayerRank}\t{this.Region}\t\t{(GameType)this.GameType}\t{this.RequestTimestamp}\t{this.Priority}";
     }
 
-    public static string CreateTableString => "CREATE TABLE IF NOT EXISTS MatchRequests (playerid uuid, playerrank int, region text, gametype int, requesttimestamp timestamp, priority int, PRIMARY KEY ((gametype, region), playerid))";
+    public static string CreateTableString => "CREATE TABLE IF NOT EXISTS MatchRequests (playerid uuid, playerrank int, region int, gametype int, requesttimestamp timestamp, priority int, PRIMARY KEY ((gametype, region), playerid))";
     public static string ColumnsNamesString => $"{nameof(MatchRequest.PlayerId)}\t\t\t\t\t{nameof(MatchRequest.PlayerRank)}\t\t{nameof(MatchRequest.Region)}\t\t{nameof(MatchRequest.GameType)}\t{nameof(MatchRequest.RequestTimestamp)}\t{nameof(MatchRequest.Priority)}";
 
     public MatchSuggestion ToMatchSuggestion(Guid serverId)

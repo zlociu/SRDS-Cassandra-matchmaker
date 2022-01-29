@@ -5,10 +5,7 @@ public record Player
 {
     public Guid Id {get; init;}
 
-    ///<summary>
-    /// Europe, Asia, USA
-    ///</summary>
-    public string Region {get; init;}
+    public Region Region {get; init;}
 
     public GameType GameType {get; init;}
 
@@ -21,4 +18,16 @@ public record Player
 
     public static string CreateTableString => "CREATE TABLE IF NOT EXISTS Players (id uuid, region text, gametype int, rank int, PRIMARY KEY (id))";
     public static string ColumnsNamesString => $"{nameof(Player.Id)}\t\t\t\t\t{nameof(Player.Region)}\t{nameof(Player.GameType)}\t{nameof(Player.Rank)}";
+
+    public MatchRequest GetPlayerMatchRequest()
+    {
+        return new MatchRequest{
+            PlayerId = this.Id,
+            PlayerRank = this.Rank,
+            GameType = this.GameType,
+            Region = this.Region,
+            Priority = new Random().Next(5),
+            RequestTimestamp = DateTime.Now
+        };
+    }
 }

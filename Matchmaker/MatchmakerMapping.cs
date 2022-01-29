@@ -18,7 +18,9 @@ public class MatchmakerMappings : Mappings
 
         For<Server>()
             .TableName("Servers")
-            .PartitionKey(u => u.Id)
+            .TableName("servers")
+            .PartitionKey(u => u.GameType, u => u.Region)
+            .ClusteringKey(u => u.Id)
             .Column(c => c.Id, n => n.WithName("id"))
             .Column(c => c.Status, n => n.WithName("status"))
             .Column(c => c.MaxPlayers, n => n.WithName("maxplayers"))
@@ -38,7 +40,7 @@ public class MatchmakerMappings : Mappings
 
         For<MatchSuggestion>()
             .TableName("MatchSuggestions")
-            .PartitionKey(u => u.PlayerId)
+            .PartitionKey(u => u.ServerId, u => u.PlayerId)
             .Column(c => c.PlayerId, n => n.WithName("playerid"))
             .Column(c => c.Region, n => n.WithName("region").WithDbType<int>())
             .Column(c => c.GameType, n => n.WithName("gametype").WithDbType<int>())
@@ -47,5 +49,4 @@ public class MatchmakerMappings : Mappings
             .Column(c => c.ServerId, n => n.WithName("serverid"));
 
     }
-
 }
