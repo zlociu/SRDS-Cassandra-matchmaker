@@ -19,4 +19,17 @@ public record MatchSuggestion
 
     public static string CreateTableString => "CREATE TABLE IF NOT EXISTS MatchSuggestions (playerid uuid, playerrank int, region int, gametype int, requesttimestamp timestamp, serverid uuid, PRIMARY KEY (serverid, playerid))";
     public static string ColumnsNamesString => $"{nameof(MatchSuggestion.PlayerId)}\t\t\t\t\t{nameof(MatchSuggestion.PlayerRank)}\t\t{nameof(MatchSuggestion.Region)}\t\t{nameof(MatchSuggestion.GameType)}\t{nameof(MatchSuggestion.RequestTimestamp)}\t{nameof(MatchSuggestion.ServerId)}";
+
+    public MatchRequest ToMatchRequest()
+    {
+        return new MatchRequest
+        {
+            PlayerId = this.PlayerId,
+            PlayerRank = this.PlayerRank,
+            Region = this.Region,
+            GameType = this.GameType,
+            RequestTimestamp = this.RequestTimestamp,
+            Priority = 0
+        };
+    }
 }
