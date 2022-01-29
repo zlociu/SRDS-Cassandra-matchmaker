@@ -32,8 +32,8 @@ var cluster = Cluster.Builder()
 
 var tmp = cluster.Connect();
 
-tmp.CreateKeyspaceIfNotExists("matchmaker", new Dictionary<string, string>{ 
-                                                { "class", ReplicationStrategies.SimpleStrategy }, 
+tmp.CreateKeyspaceIfNotExists("matchmaker", new Dictionary<string, string>{
+                                                { "class", ReplicationStrategies.SimpleStrategy },
                                                 { "replication_factor", "3" } 
                                             });
 
@@ -52,6 +52,7 @@ mapper.Execute(Server.CreateTableString);
 mapper.Execute(MatchRequest.CreateTableString);
 mapper.Execute(MatchSuggestion.CreateTableString);
 mapper.Execute("CREATE INDEX ON MatchRequests (priority)");
+mapper.Execute("CREATE INDEX ON Servers (status)");
 
 var random = new Random();
 var matchRequestRepository = new CassandraMatchRequestRepository(mapper);

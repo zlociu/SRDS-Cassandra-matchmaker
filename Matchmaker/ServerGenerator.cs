@@ -36,7 +36,7 @@ public class ServerGenerator
                     var x when x == 3 => Region.WestUS,
                     _ => Region.Asia
                 },
-                Status = "Empty"
+                Status = ServerStatus.WaitingForPlayers
 
             };
             servers.Add(server);

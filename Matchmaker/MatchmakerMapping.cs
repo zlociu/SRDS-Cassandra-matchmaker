@@ -18,11 +18,10 @@ public class MatchmakerMappings : Mappings
 
         For<Server>()
             .TableName("Servers")
-            .TableName("servers")
             .PartitionKey(u => u.GameType, u => u.Region)
             .ClusteringKey(u => u.Id)
             .Column(c => c.Id, n => n.WithName("id"))
-            .Column(c => c.Status, n => n.WithName("status"))
+            .Column(c => c.Status, n => n.WithName("status").WithDbType<int>())
             .Column(c => c.MaxPlayers, n => n.WithName("maxplayers"))
             .Column(c => c.Region, n => n.WithName("region").WithDbType<int>())
             .Column(c => c.GameType, n => n.WithName("gametype").WithDbType<int>());
