@@ -1,12 +1,20 @@
 using Cassandra.Mapping;
+using Cassandra;
 
 public class CassandraMatchSuggestionRepository : IMatchSuggestionRepository
 {
     private IMapper db;
 
-    public CassandraMatchSuggestionRepository(IMapper cassandraMapper)
+    public CassandraMatchSuggestionRepository(int port)
     {
-        db = cassandraMapper;
+       var cluster = Cluster.Builder()
+                     .AddContactPoint("127.0.0.1")
+                     .WithPort(port)
+                     .Build();
+
+        var session = cluster.Connect("matchmaker");
+
+        db = new Mapper(session);
     }
 
     public IEnumerable<MatchSuggestion> GetByServerIds(IEnumerable<Guid> serverIds, int limit)

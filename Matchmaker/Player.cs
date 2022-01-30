@@ -27,7 +27,7 @@ public record Player
             GameType = this.GameType,
             Region = this.Region,
             Priority = new Random().Next(5),
-            RequestTimestamp = DateTime.Now
+            RequestTimestamp = DateTimeOffset.Now
         };
     }
 }

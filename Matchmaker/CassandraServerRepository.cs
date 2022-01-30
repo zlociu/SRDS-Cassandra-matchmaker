@@ -1,12 +1,20 @@
 using Cassandra.Mapping;
+using Cassandra;
 
 public class CassandraServerRepository : IServerRepository
 {
     private IMapper db;
 
-    public CassandraServerRepository(IMapper cassandraMapper)
+    public CassandraServerRepository(int port)
     {
-        db = cassandraMapper;
+        var cluster = Cluster.Builder()
+                     .AddContactPoint("127.0.0.1")
+                     .WithPort(port)
+                     .Build();
+
+        var session = cluster.Connect("matchmaker");
+
+        db = new Mapper(session);
     }
 
     public IEnumerable<Server> GetAvailableByGameTypeAndRegion(GameType gameType, Region region, int limit)
@@ -15,7 +23,7 @@ public class CassandraServerRepository : IServerRepository
             $"WHERE gametype=? AND region=? AND status=? LIMIT ?",
             (int)gameType,
             (int)region,
-            ServerStatus.WaitingForPlayers,
+            (int)ServerStatus.WaitingForPlayers,
             limit
         );
     }

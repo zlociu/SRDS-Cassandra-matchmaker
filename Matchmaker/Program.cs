@@ -22,12 +22,12 @@ foreach (var item in list2)
 #region Creating Cassandra keyspace and required tables if not exists
 
 MappingConfiguration.Global.Define<MatchmakerMappings>();
-Cassandra.Diagnostics.CassandraTraceSwitch.Level = TraceLevel.Info;
-Trace.Listeners.Add(new TextWriterTraceListener(Console.Out));
+//Cassandra.Diagnostics.CassandraTraceSwitch.Level = TraceLevel.Info;
+//Trace.Listeners.Add(new TextWriterTraceListener(Console.Out));
 
 var cluster = Cluster.Builder()
                      .AddContactPoint("127.0.0.1")
-                     .WithPort(9042)
+                     .WithPort(9043)
                      .Build();
 
 var tmp = cluster.Connect();
@@ -54,78 +54,81 @@ mapper.Execute(MatchSuggestion.CreateTableString);
 mapper.Execute("CREATE INDEX ON MatchRequests (priority)");
 mapper.Execute("CREATE INDEX ON Servers (status)");
 
-var random = new Random();
-var matchRequestRepository = new CassandraMatchRequestRepository(mapper);
-var matchRequest = RandomMatchRequest(random);
-matchRequestRepository.Upsert(matchRequest);
-System.Console.WriteLine("Upsert successful");
-var result = matchRequestRepository.GetByGameTypeAndRegion(matchRequest.GameType, matchRequest.Region, 10);
-PrintMatchRequests(result);
-result = matchRequestRepository.GetByPriority(0, 10);
-PrintMatchRequests(result);
 
-void PrintMatchRequests(IEnumerable<MatchRequest> matchRequests)
-{
-    Console.WriteLine("Match requests");
-    Console.WriteLine(MatchRequest.ColumnsNamesString);
-    Console.WriteLine("-----------------------------------------------------------------------------------");
-
-    foreach (var row in matchRequests)
-    {
-        Console.WriteLine(row.ToString());
-    }
-}
-
-MatchRequest RandomMatchRequest(Random random)
-{
-    return new MatchRequest
-    {
-        PlayerId = Guid.NewGuid(),
-        PlayerRank = random.Next(),
-        Region = RandomRegion(random),
-        GameType = RandomGameType(random),
-        RequestTimestamp = DateTimeOffset.Now,
-        Priority = 0
-    };
-}
-
-GameType RandomGameType(Random random)
-{
-    var gameTypes = Enum.GetValues<GameType>();
-    return gameTypes[random.Next(gameTypes.Count())];
-}
-
-Region RandomRegion(Random random)
-{
-    var regions = Enum.GetValues<Region>();
-    return regions[random.Next(regions.Count())];
-}
 #endregion
 
+#region create and save servers
+
+List<ServersSimulator> serversSimulators = new List<ServersSimulator>{
+    new ServersSimulator(40, 9042),
+    new ServersSimulator(40, 9043),
+    new ServersSimulator(40, 9044)
+};
+
+List<Task> serverTasks = new();
+
+Stopwatch s1 = new();
+s1.Start();
+
+foreach(var simulator in serversSimulators)
+{
+    serverTasks.Add(simulator.SimulateServers());
+}
+
+Task.WaitAll(serverTasks.ToArray());
+s1.Stop();
+Console.WriteLine($"creating 60 servers in time: {s1.ElapsedMilliseconds} ms");
+
+#endregion
+
+#region generate and save players
+
 List<PlayersSimulator> playersSimulators = new List<PlayersSimulator>{
-    new PlayersSimulator(1000, 9042),
-    new PlayersSimulator(1000, 9042),
-    new PlayersSimulator(1000, 9042)
+    new PlayersSimulator(100, 9042),
+    new PlayersSimulator(100, 9043),
+    new PlayersSimulator(100, 9044)
 };
 
 List<Task> playerTasks = new();
 
-Stopwatch s1 = new();
-s1.Start();
+s1.Restart();
 
 foreach(var simulator in playersSimulators)
 {
     playerTasks.Add(simulator.SimulatePlayers());
 }
 
-
 Task.WaitAll(playerTasks.ToArray());
 s1.Stop();
-Console.WriteLine($"inserting 3000 elements in time: {s1.ElapsedMilliseconds} ms");
+Console.WriteLine($"inserting 300 player requests in time: {s1.ElapsedMilliseconds} ms");
 
-var num = mapper.Fetch<MatchRequest>();
-// foreach(var item in num)
-// {
-//     Console.WriteLine(item.ToString());
-// }
-Console.WriteLine($"number of requests: {num.Count()}");
+#endregion
+
+var matchmaker = Task.Run( () => {
+    CassandraMatchRequestRepository mReqRepo = new(9043);
+    CassandraMatchSuggestionRepository mSugRepo = new(9043);
+    CassandraServerRepository serverRepo = new(9043);
+    Matchmaker m1 = new Matchmaker(serverRepo, mReqRepo, mSugRepo);
+    m1.MatchmakerLoop();
+});
+
+// CassandraMatchRequestRepository mReqRepo = new(9043);
+// CassandraMatchSuggestionRepository mSugRepo = new(9043);
+// CassandraServerRepository serverRepo = new(9043);
+// Matchmaker m1 = new Matchmaker(serverRepo, mReqRepo, mSugRepo);
+// m1.MatchmakerLoop();
+
+matchmaker.Wait();
+
+var suggestions = mapper.Fetch<MatchSuggestion>().ToList();
+
+Console.WriteLine($"number of suggestions: {suggestions.Count()}");
+
+int meanTime = 0;
+foreach( var suggestion in suggestions)
+{
+    meanTime += (suggestion.SuggestionTimestamp - suggestion.RequestTimestamp).Milliseconds;
+}
+
+Console.WriteLine($"Mean time between request and suggestion creation:{Math.Round((1.0 * meanTime) / suggestions.Count(),1)} ms");
+
