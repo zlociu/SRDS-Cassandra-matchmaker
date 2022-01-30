@@ -42,12 +42,12 @@ Console.WriteLine(session.Keyspace);
 
 IMapper mapper = new Mapper(session);
 
-mapper.Execute("DROP TABLE IF EXISTS Players");
+//mapper.Execute("DROP TABLE IF EXISTS Players");
 mapper.Execute("DROP TABLE IF EXISTS Servers");
 mapper.Execute("DROP TABLE IF EXISTS MatchRequests");
 mapper.Execute("DROP TABLE IF EXISTS MatchSuggestions");
 
-mapper.Execute(Player.CreateTableString);
+//mapper.Execute(Player.CreateTableString);
 mapper.Execute(Server.CreateTableString);
 mapper.Execute(MatchRequest.CreateTableString);
 mapper.Execute(MatchSuggestion.CreateTableString);
@@ -109,12 +109,15 @@ List<PlayersSimulator> playersSimulators = new List<PlayersSimulator>{
 };
 
 List<Task> playerTasks = new();
+
+Stopwatch s1 = new();
+s1.Start();
+
 foreach(var simulator in playersSimulators)
 {
     playerTasks.Add(simulator.SimulatePlayers());
 }
-Stopwatch s1 = new();
-s1.Start();
+
 
 Task.WaitAll(playerTasks.ToArray());
 s1.Stop();
