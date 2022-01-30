@@ -10,7 +10,7 @@ public class PlayersSimulator
 
     public PlayersSimulator(int playersCount, int cassandraPort, ConsistencyLevel consistencyLevel = ConsistencyLevel.One)
     {   
-        _players = new();
+        _players = new PlayerGerenator().GeneratePlayers(playersCount).ToList();
         _cassandraPort = cassandraPort;
         _count = playersCount;
         _consistencyLevel = consistencyLevel;
@@ -20,8 +20,6 @@ public class PlayersSimulator
     {
         //await Task.Yield();
         
-        _players = new PlayerGerenator().GeneratePlayers(_count).ToList();
-
         var cluster = Cluster.Builder()
                      .AddContactPoint("127.0.0.1")
                      .WithPort(_cassandraPort)

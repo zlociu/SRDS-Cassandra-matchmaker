@@ -103,9 +103,9 @@ Region RandomRegion(Random random)
 #endregion
 
 List<PlayersSimulator> playersSimulators = new List<PlayersSimulator>{
-    new PlayersSimulator(300, 9042),
-    new PlayersSimulator(300, 9043),
-    new PlayersSimulator(300, 9044)
+    new PlayersSimulator(1000, 9042),
+    new PlayersSimulator(1000, 9042),
+    new PlayersSimulator(1000, 9042)
 };
 
 List<Task> playerTasks = new();
@@ -121,7 +121,7 @@ foreach(var simulator in playersSimulators)
 
 Task.WaitAll(playerTasks.ToArray());
 s1.Stop();
-Console.WriteLine($"inserting 900 elements in time: {s1.ElapsedMilliseconds} ms");
+Console.WriteLine($"inserting 3000 elements in time: {s1.ElapsedMilliseconds} ms");
 
 var num = mapper.Fetch<MatchRequest>();
 // foreach(var item in num)
