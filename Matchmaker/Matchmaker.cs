@@ -1,8 +1,8 @@
 public class Matchmaker
 {
-    private const double PriorityWeight = 1.0;
+    private const double PriorityWeight = 100.0;
     private const double RankWeight = 1.0;
-    private const double FullnessWeight = 1.0;
+    private const double FullnessWeight = 200.0;
     private const double MinimalMatchQuality = 0;
     private const int RequestBatchSize = 100;
     private IServerRepository serverRepository;
