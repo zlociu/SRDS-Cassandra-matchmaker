@@ -38,7 +38,7 @@ tmp.CreateKeyspaceIfNotExists("matchmaker", new Dictionary<string, string>{
                                             });
 
 var session = cluster.Connect("matchmaker");
-Console.WriteLine(session.Keyspace);
+Console.WriteLine($"{session.Keyspace}\n");
 
 IMapper mapper = new Mapper(session);
 
@@ -77,7 +77,7 @@ foreach(var simulator in serversSimulators)
 
 Task.WaitAll(serverTasks.ToArray());
 s1.Stop();
-Console.WriteLine($"creating 60 servers in time: {s1.ElapsedMilliseconds} ms");
+Console.WriteLine($"creating 120 servers in time: {s1.ElapsedMilliseconds} ms");
 
 #endregion
 
@@ -104,31 +104,45 @@ Console.WriteLine($"inserting 300 player requests in time: {s1.ElapsedMillisecon
 
 #endregion
 
-var matchmaker = Task.Run( () => {
-    CassandraMatchRequestRepository mReqRepo = new(9043);
-    CassandraMatchSuggestionRepository mSugRepo = new(9043);
-    CassandraServerRepository serverRepo = new(9043);
-    Matchmaker m1 = new Matchmaker(serverRepo, mReqRepo, mSugRepo);
-    m1.MatchmakerLoop();
-});
+#region Matchmaker work
 
-// CassandraMatchRequestRepository mReqRepo = new(9043);
-// CassandraMatchSuggestionRepository mSugRepo = new(9043);
-// CassandraServerRepository serverRepo = new(9043);
-// Matchmaker m1 = new Matchmaker(serverRepo, mReqRepo, mSugRepo);
-// m1.MatchmakerLoop();
+// var matchmaker = Task.Run( () => {
+//     CassandraMatchRequestRepository mReqRepo = new(9043);
+//     CassandraMatchSuggestionRepository mSugRepo = new(9043);
+//     CassandraServerRepository serverRepo = new(9043);
+//     Matchmaker m1 = new Matchmaker(serverRepo, mReqRepo, mSugRepo);
+//     m1.MatchmakerLoop();
+// });
 
-matchmaker.Wait();
+List<MatchmakerSimulator> matchmakerSimulators = new List<MatchmakerSimulator>{
+    new MatchmakerSimulator(9042, ConsistencyLevel.One),
+    new MatchmakerSimulator(9043, ConsistencyLevel.One),
+    new MatchmakerSimulator(9044, ConsistencyLevel.One)
+};
 
-var suggestions = mapper.Fetch<MatchSuggestion>().ToList();
-
-Console.WriteLine($"number of suggestions: {suggestions.Count()}");
-
-int meanTime = 0;
-foreach( var suggestion in suggestions)
+List<Task> matchmakerTasks = new List<Task>();
+foreach(var simulator in matchmakerSimulators)
 {
-    meanTime += (suggestion.SuggestionTimestamp - suggestion.RequestTimestamp).Milliseconds;
+    matchmakerTasks.Add(simulator.SimulateMatchmaker());
 }
 
-Console.WriteLine($"Mean time between request and suggestion creation:{Math.Round((1.0 * meanTime) / suggestions.Count(),1)} ms");
+Task.WaitAll(matchmakerTasks.ToArray());
+
+#endregion
+
+var suggestions = mapper.Fetch<MatchSuggestion>().ToList();
+Console.WriteLine($"number of suggestions: {suggestions.Count()}");
+
+//calculations 
+Console.WriteLine($"\nMatchmaker time statistics: time between send request and get suggestion");
+Console.WriteLine($"Mean time: {Math.Round(suggestions.Average(s => (s.SuggestionTimestamp - s.RequestTimestamp).TotalMilliseconds))} ms");
+Console.WriteLine($"Max time: {suggestions.Max(s => (s.SuggestionTimestamp - s.RequestTimestamp).TotalMilliseconds)} ms");
+Console.WriteLine("P99 time: {0} ms",
+    suggestions
+        .Select(s => (s.SuggestionTimestamp - s.RequestTimestamp).TotalMilliseconds)
+        .OrderBy(s => s)
+        .SkipLast(suggestions.Count() / 100)
+        .Last());
+
+Console.WriteLine($"found {suggestions.GroupBy(x => x.PlayerId).Where(x => x.Count() > 1).Count()} people with assignment to more than ONE server");
 

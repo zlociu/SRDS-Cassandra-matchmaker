@@ -22,7 +22,7 @@ public class Matchmaker
         processingOrder = GenerateProcessingOrder().ToList();
     }
 
-    public void MatchmakerLoop()
+    public Task MatchmakerLoop()
     {
         //while (true)
         //{
@@ -31,6 +31,7 @@ public class Matchmaker
                 FindAndAssignMatches(gameType, region, RequestBatchSize);
                 //yield return (gameType, region);
             }
+            return Task.CompletedTask;
         //}
     }
 
