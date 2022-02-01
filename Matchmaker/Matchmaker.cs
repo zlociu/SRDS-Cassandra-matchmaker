@@ -1,9 +1,9 @@
 public class Matchmaker
 {
-    private const double PriorityWeight = 1.0;
-    private const double RankWeight = -1.0;
-    private const double FullnessWeight = 1.0;
-    private const double MinimalMatchQuality = 0.5;
+    private const double PriorityWeight = 100.0;
+    private const double RankWeight = 1.0;
+    private const double FullnessWeight = 200.0;
+    private const double MinimalMatchQuality = 0;
     private const int RequestBatchSize = 100;
     private IServerRepository serverRepository;
     private IMatchRequestRepository matchRequestRepository;
@@ -22,16 +22,17 @@ public class Matchmaker
         processingOrder = GenerateProcessingOrder().ToList();
     }
 
-    public IEnumerable<(GameType, Region)> MatchmakerLoop()
+    public Task MatchmakerLoop()
     {
-        while (true)
-        {
+        //while (true)
+        //{
             foreach (var (gameType, region) in processingOrder)
             {
                 FindAndAssignMatches(gameType, region, RequestBatchSize);
-                yield return (gameType, region);
+                //yield return (gameType, region);
             }
-        }
+            return Task.CompletedTask;
+        //}
     }
 
     private IEnumerable<(GameType, Region)> GenerateProcessingOrder()
@@ -48,15 +49,16 @@ public class Matchmaker
     private void FindAndAssignMatches(GameType gameType, Region region, int requestLimit)
     {
         var possibleMatches = FindMatches(gameType, region, requestLimit).OrderByDescending(m => m.Quality);
+        var cnt = possibleMatches.Count();
         AssignMatches(possibleMatches);
     }
 
     private IEnumerable<PossibleMatch> FindMatches(GameType gameType, Region region, int requestLimit)
     {
-        var servers = serverRepository.GetAvailableByGameTypeAndRegion(gameType, region);
-        var assignedPlayers = matchSuggestionRepository.GetByServerIds(servers.Select(s => s.Id));
-        var serverSummaries = GetServerSummaries(servers, assignedPlayers);
-        var requests = matchRequestRepository.GetByGameTypeAndRegion(gameType, region, requestLimit);
+        var servers = serverRepository.GetAvailableByGameTypeAndRegion(gameType, region).ToList();
+        var assignedPlayers = matchSuggestionRepository.GetByServerIds(servers.Select(s => s.Id)).ToList();
+        var serverSummaries = GetServerSummaries(servers, assignedPlayers).ToList();
+        var requests = matchRequestRepository.GetByGameTypeAndRegion(gameType, region, requestLimit).ToList();
         return FindPossibleMatches(requests, serverSummaries);
     }
 
@@ -78,7 +80,7 @@ public class Matchmaker
 
     private IEnumerable<ServerSummary> GetServerSummaries(IEnumerable<Server> servers, IEnumerable<MatchSuggestion> assignedPlayers)
     {
-        return servers.GroupJoin(assignedPlayers, s => s.Id, p => p.ServerId, (s, p) => GetServerSummary(s, p));
+        return servers.GroupJoin(assignedPlayers, s => s.Id, p => p.ServerId, (s, ap) => GetServerSummary(s, ap));
     }
 
     private ServerSummary GetServerSummary(Server server, IEnumerable<MatchSuggestion> assignedPlayers)
@@ -118,7 +120,7 @@ public class Matchmaker
     {
         var matchSuggestion = matchRequest.ToMatchSuggestion(serverId);
         matchSuggestionRepository.Upsert(matchSuggestion);
-        matchRequestRepository.RemoveByPlayerId(matchRequest.PlayerId);
+        matchRequestRepository.RemoveByPlayerId(matchRequest.PlayerId, matchRequest.Region, matchRequest.GameType);
     }
 
     private readonly record struct ServerSummary(Guid Id, int PlayerCount, int MaxPlayers, double? MeanRank);

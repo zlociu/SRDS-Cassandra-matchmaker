@@ -46,6 +46,7 @@ public class MatchmakerMappings : Mappings
             .Column(c => c.GameType, n => n.WithName("gametype").WithDbType<int>())
             .Column(c => c.PlayerRank, n => n.WithName("playerrank"))
             .Column(c => c.RequestTimestamp, n => n.WithName("requesttimestamp"))
+            .Column(c => c.SuggestionTimestamp, n => n.WithName("suggestiontimestamp"))
             .Column(c => c.ServerId, n => n.WithName("serverid"));
 
     }

@@ -1,33 +1,16 @@
 ﻿using System.Diagnostics;
 using Cassandra;
 using Cassandra.Mapping;
-/*
-PlayerGerenator playerGerenator = new();
-var list =  playerGerenator.GeneratePlayers(100);
-Console.WriteLine(Player.ColumnsNamesString);
-foreach (var item in list)
-{
-    Console.WriteLine(item.ToString());
-}
-
-ServerGenerator serverGenerator = new();
-var list2 =  serverGenerator.GenerateServers(10);
-Console.WriteLine($"\n{Server.ColumnsNamesString}");
-foreach (var item in list2)
-{
-    Console.WriteLine(item.ToString());
-}
-*/
 
 #region Creating Cassandra keyspace and required tables if not exists
 
 MappingConfiguration.Global.Define<MatchmakerMappings>();
-Cassandra.Diagnostics.CassandraTraceSwitch.Level = TraceLevel.Info;
-Trace.Listeners.Add(new TextWriterTraceListener(Console.Out));
+//Cassandra.Diagnostics.CassandraTraceSwitch.Level = TraceLevel.Info;
+//Trace.Listeners.Add(new TextWriterTraceListener(Console.Out));
 
 var cluster = Cluster.Builder()
                      .AddContactPoint("127.0.0.1")
-                     .WithPort(9042)
+                     .WithPort(9043)
                      .Build();
 
 var tmp = cluster.Connect();
@@ -38,94 +21,130 @@ tmp.CreateKeyspaceIfNotExists("matchmaker", new Dictionary<string, string>{
                                             });
 
 var session = cluster.Connect("matchmaker");
-Console.WriteLine(session.Keyspace);
+Console.WriteLine($"{session.Keyspace}\n");
 
 IMapper mapper = new Mapper(session);
 
-//mapper.Execute("DROP TABLE IF EXISTS Players");
-mapper.Execute("DROP TABLE IF EXISTS Servers");
-mapper.Execute("DROP TABLE IF EXISTS MatchRequests");
-mapper.Execute("DROP TABLE IF EXISTS MatchSuggestions");
+mapper.DropTableIfExists("Servers");
+mapper.DropTableIfExists("MatchRequests");
+mapper.DropTableIfExists("MatchSuggestions");
 
-//mapper.Execute(Player.CreateTableString);
 mapper.Execute(Server.CreateTableString);
 mapper.Execute(MatchRequest.CreateTableString);
 mapper.Execute(MatchSuggestion.CreateTableString);
-mapper.Execute("CREATE INDEX ON MatchRequests (priority)");
-mapper.Execute("CREATE INDEX ON Servers (status)");
 
-var random = new Random();
-var matchRequestRepository = new CassandraMatchRequestRepository(mapper);
-var matchRequest = RandomMatchRequest(random);
-matchRequestRepository.Upsert(matchRequest);
-System.Console.WriteLine("Upsert successful");
-var result = matchRequestRepository.GetByGameTypeAndRegion(matchRequest.GameType, matchRequest.Region, 10);
-PrintMatchRequests(result);
-result = matchRequestRepository.GetByPriority(0, 10);
-PrintMatchRequests(result);
+mapper.CreateIndex("MatchRequests", "priority");
+mapper.CreateIndex("Servers", "status");
 
-void PrintMatchRequests(IEnumerable<MatchRequest> matchRequests)
-{
-    Console.WriteLine("Match requests");
-    Console.WriteLine(MatchRequest.ColumnsNamesString);
-    Console.WriteLine("-----------------------------------------------------------------------------------");
-
-    foreach (var row in matchRequests)
-    {
-        Console.WriteLine(row.ToString());
-    }
-}
-
-MatchRequest RandomMatchRequest(Random random)
-{
-    return new MatchRequest
-    {
-        PlayerId = Guid.NewGuid(),
-        PlayerRank = random.Next(),
-        Region = RandomRegion(random),
-        GameType = RandomGameType(random),
-        RequestTimestamp = DateTimeOffset.Now,
-        Priority = 0
-    };
-}
-
-GameType RandomGameType(Random random)
-{
-    var gameTypes = Enum.GetValues<GameType>();
-    return gameTypes[random.Next(gameTypes.Count())];
-}
-
-Region RandomRegion(Random random)
-{
-    var regions = Enum.GetValues<Region>();
-    return regions[random.Next(regions.Count())];
-}
 #endregion
 
+#region create and save servers
+
+List<ServersSimulator> serversSimulators = new List<ServersSimulator>{
+    new ServersSimulator(30, 9042),
+    new ServersSimulator(30, 9043),
+    new ServersSimulator(30, 9044)
+};
+
+List<Task> serverTasks = new();
+
+Stopwatch s1 = new();
+s1.Start();
+
+foreach(var simulator in serversSimulators)
+{
+    serverTasks.Add(simulator.SimulateServers());
+}
+
+Task.WaitAll(serverTasks.ToArray());
+s1.Stop();
+Console.WriteLine($"creating 90 servers in time: {s1.ElapsedMilliseconds} ms");
+
+#endregion
+
+#region generate and save players
+
 List<PlayersSimulator> playersSimulators = new List<PlayersSimulator>{
-    new PlayersSimulator(1000, 9042),
-    new PlayersSimulator(1000, 9042),
-    new PlayersSimulator(1000, 9042)
+    new PlayersSimulator(100, 9042),
+    new PlayersSimulator(100, 9043),
+    new PlayersSimulator(100, 9044)
 };
 
 List<Task> playerTasks = new();
 
-Stopwatch s1 = new();
-s1.Start();
+s1.Restart();
 
 foreach(var simulator in playersSimulators)
 {
     playerTasks.Add(simulator.SimulatePlayers());
 }
 
-
 Task.WaitAll(playerTasks.ToArray());
 s1.Stop();
-Console.WriteLine($"inserting 3000 elements in time: {s1.ElapsedMilliseconds} ms");
+var stopPlayerGenerator = DateTimeOffset.Now;
+Console.WriteLine($"inserting 300 player requests in time: {s1.ElapsedMilliseconds} ms");
+#endregion
 
-var num = mapper.Fetch<MatchRequest>();
-// foreach(var item in num)
-// {
-//     Console.WriteLine(item.ToString());
-// }
-Console.WriteLine($"number of requests: {num.Count()}");
+#region Matchmaker work
+
+List<MatchmakerSimulator> matchmakerSimulators = new List<MatchmakerSimulator>{
+    new MatchmakerSimulator(9042, ConsistencyLevel.One),
+    new MatchmakerSimulator(9043, ConsistencyLevel.One),
+    new MatchmakerSimulator(9044, ConsistencyLevel.One)
+};
+
+List<Task> matchmakerTasks = new List<Task>();
+foreach(var simulator in matchmakerSimulators)
+{
+    matchmakerTasks.Add(simulator.SimulateMatchmaker());
+}
+
+Task.WaitAll(matchmakerTasks.ToArray());
+
+#endregion
+
+#region Calculations 
+
+var suggestions = mapper.Fetch<MatchSuggestion>().ToList();
+var servers = mapper.Fetch<Server>().ToList();
+Console.WriteLine($"number of suggestions: {suggestions.Count()}");
+
+var meanRounded = Math.Round(suggestions.Average(s => (s.SuggestionTimestamp - stopPlayerGenerator).TotalMilliseconds));
+var max = Math.Round(suggestions.Max(s => (s.SuggestionTimestamp - stopPlayerGenerator).TotalMilliseconds));
+var p99 = Math.Round(suggestions
+            .Select(s => (s.SuggestionTimestamp - stopPlayerGenerator).TotalMilliseconds)
+            .OrderBy(s => s)
+            .SkipLast(suggestions.Count() / 100)
+            .Last());
+
+var peopleErrors = suggestions.GroupBy(x => x.PlayerId).Where(x => x.Count() > 1).Count();
+var serversGroupJoinSuggestions = servers.GroupJoin( 
+                                suggestions, 
+                                e => e.Id, 
+                                u => u.ServerId, 
+                                (server, number) => new {   Server = server.Id, 
+                                                            MaxPlayers = server.MaxPlayers, 
+                                                            Players = number.Count() });
+
+var serverErrors = serversGroupJoinSuggestions
+                    .Where(x => x.Players > x.MaxPlayers)
+                    .Count();
+
+var serverEmpty = serversGroupJoinSuggestions
+                    .Where(x => x.Players == 0)
+                    .Count();
+
+var meanServerFillness = serversGroupJoinSuggestions
+                    .Where(x => x.Players > 0)
+                    .Average(x => (1.0 * x.Players / x.MaxPlayers));
+
+Console.WriteLine($"\nMatchmaker time statistics: time between send request and get suggestion");
+Console.WriteLine($"  mean time: {meanRounded} ms");
+Console.WriteLine($"  max time: {max} ms");
+Console.WriteLine($"  p99 time: {p99} ms"); //two standard deviations from mean
+Console.WriteLine($"found {peopleErrors} ({Math.Round(100.0*peopleErrors/suggestions.Count(),2)}%) people with assignment to more than ONE server");
+Console.WriteLine($"found {serverErrors} ({Math.Round(100.0*serverErrors/servers.Count(),2)}%) servers with assiged more players than 'maxPlayers' property");
+Console.WriteLine($"found {serverEmpty} empty servers");
+Console.WriteLine($"non-empty servers mean occupancy: {Math.Round(meanServerFillness * 100, 1)}%"); 
+
+#endregion

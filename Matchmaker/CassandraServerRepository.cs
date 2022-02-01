@@ -1,48 +1,57 @@
 using Cassandra.Mapping;
+using Cassandra;
 
 public class CassandraServerRepository : IServerRepository
 {
     private IMapper db;
+    private ConsistencyLevel _consistencyLevel;
 
-    public CassandraServerRepository(IMapper cassandraMapper)
+    public CassandraServerRepository(int port, ConsistencyLevel consistencyLvl)
     {
-        db = cassandraMapper;
+        var cluster = Cluster.Builder()
+                     .AddContactPoint("127.0.0.1")
+                     .WithPort(port)
+                     .Build();
+
+        var session = cluster.Connect("matchmaker");
+
+        db = new Mapper(session);
+        _consistencyLevel = consistencyLvl;
     }
 
     public IEnumerable<Server> GetAvailableByGameTypeAndRegion(GameType gameType, Region region, int limit)
     {
-        return db.Fetch<Server>(
+        Cql cql = new Cql(
             $"WHERE gametype=? AND region=? AND status=? LIMIT ?",
             (int)gameType,
             (int)region,
-            ServerStatus.WaitingForPlayers,
+            (int)ServerStatus.WaitingForPlayers,
             limit
-        );
+        ).WithOptions(x => x.SetConsistencyLevel(_consistencyLevel));
+        return db.Fetch<Server>(cql);
     }
 
     public void Remove(Guid serverId, GameType gameType, Region region)
     {
-        db.Delete<Server>(
-            $"WHERE gametype=? AND region=? AND serverid=?",
+        Cql cql = new Cql($"WHERE gametype=? AND region=? AND serverid=?",
             (int)gameType,
             (int)region,
-            serverId
-        );
+            serverId).WithOptions(x => x.SetConsistencyLevel(_consistencyLevel));
+        db.Delete<Server>(cql);
     }
 
     public void SetStatus(Guid serverId, GameType gameType, Region region, ServerStatus status)
     {
-        db.Update<Server>(
-            $"SET status=? WHERE gametype=? AND region=? AND serverid=?",
+        Cql cql = new Cql($"SET status=? WHERE gametype=? AND region=? AND serverid=?",
             (int)status,
             (int)gameType,
             (int)region,
-            serverId
-        );
+            serverId).WithOptions(x => x.SetConsistencyLevel(_consistencyLevel));
+        db.Update<Server>(cql);
     }
 
     public void Upsert(Server Server)
     {
-        db.Insert(Server);
+        db.Insert(Server, new CqlQueryOptions().SetConsistencyLevel(_consistencyLevel));
     }
 }

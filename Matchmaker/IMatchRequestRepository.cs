@@ -6,5 +6,5 @@ public interface IMatchRequestRepository
 
     void Upsert(MatchRequest matchRequest);
 
-    void RemoveByPlayerId(Guid playerId);
+    void RemoveByPlayerId(Guid playerId, Region region, GameType gameType);
 }

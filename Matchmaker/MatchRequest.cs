@@ -29,6 +29,7 @@ public record MatchRequest
             Region = this.Region,
             GameType = this.GameType,
             RequestTimestamp = this.RequestTimestamp,
+            SuggestionTimestamp = DateTimeOffset.Now,
             ServerId = serverId
         };
     }
