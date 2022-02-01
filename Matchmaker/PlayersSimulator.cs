@@ -28,13 +28,11 @@ public class PlayersSimulator
         var session = cluster.Connect("matchmaker");
         IMapper mapper = new Mapper(session);
 
-        //tutaj jakaś pętla nieksończona ?? żeby ciągle chcieć zaczynać nową grę ? 
-
         foreach(var player in _players)
         {   
             await mapper.InsertAsync<MatchRequest>(
                 player.GetPlayerMatchRequest(), 
-                CqlQueryOptions.New().SetConsistencyLevel(_consistencyLevel));
+                new CqlQueryOptions().SetConsistencyLevel(_consistencyLevel));
             //await mapper.InsertIfNotExistsAsync<MatchRequest>(player.GetPlayerMatchRequest(), CqlQueryOptions.New().SetConsistencyLevel(ConsistencyLevel.One));
         }
     }
