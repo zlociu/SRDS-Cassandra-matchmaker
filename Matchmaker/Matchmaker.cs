@@ -24,15 +24,11 @@ public class Matchmaker
 
     public Task MatchmakerLoop()
     {
-        //while (true)
-        //{
-            foreach (var (gameType, region) in processingOrder)
-            {
-                FindAndAssignMatches(gameType, region, RequestBatchSize);
-                //yield return (gameType, region);
-            }
-            return Task.CompletedTask;
-        //}
+        foreach (var (gameType, region) in processingOrder)
+        {
+            FindAndAssignMatches(gameType, region, RequestBatchSize);
+        }
+        return Task.CompletedTask;
     }
 
     private IEnumerable<(GameType, Region)> GenerateProcessingOrder()
@@ -49,7 +45,6 @@ public class Matchmaker
     private void FindAndAssignMatches(GameType gameType, Region region, int requestLimit)
     {
         var possibleMatches = FindMatches(gameType, region, requestLimit).OrderByDescending(m => m.Quality);
-        var cnt = possibleMatches.Count();
         AssignMatches(possibleMatches);
     }
 

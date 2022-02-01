@@ -6,16 +6,9 @@ public class CassandraServerRepository : IServerRepository
     private IMapper db;
     private ConsistencyLevel _consistencyLevel;
 
-    public CassandraServerRepository(int port, ConsistencyLevel consistencyLvl)
+    public CassandraServerRepository(IMapper mapper, ConsistencyLevel consistencyLvl)
     {
-        var cluster = Cluster.Builder()
-                     .AddContactPoint("127.0.0.1")
-                     .WithPort(port)
-                     .Build();
-
-        var session = cluster.Connect("matchmaker");
-
-        db = new Mapper(session);
+        db = mapper;
         _consistencyLevel = consistencyLvl;
     }
 

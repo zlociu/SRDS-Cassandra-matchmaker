@@ -7,16 +7,9 @@ public class CassandraMatchRequestRepository : IMatchRequestRepository
     private ConsistencyLevel _consistencyLevel;
     private Random random = new();
 
-    public CassandraMatchRequestRepository(int port, ConsistencyLevel consistencyLvl)
+    public CassandraMatchRequestRepository(IMapper mapper, ConsistencyLevel consistencyLvl)
     {
-        var cluster = Cluster.Builder()
-                     .AddContactPoint("127.0.0.1")
-                     .WithPort(port)
-                     .Build();
-
-        var session = cluster.Connect("matchmaker");
-
-        db = new Mapper(session);
+        db = mapper;
         _consistencyLevel = consistencyLvl;
     }
 
