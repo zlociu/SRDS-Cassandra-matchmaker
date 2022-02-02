@@ -1,16 +1,22 @@
 ﻿using System.Diagnostics;
 using Cassandra;
 
-var cassandra = new CassandraSetup(address: "127.0.0.1", port: 9042, replicationFactor: 3);
+var cassandraAddress = "127.0.0.1";
+var cassandraPort = 9042;
+var numberOfServersPerRegionAndGameType = 5;
+var numberOfPlayersPerRegionAndGameType = 30;
+var numberOfMatchmakers = 3;
+
+var cassandra = new CassandraSetup(cassandraAddress, cassandraPort, replicationFactor: 3);
 var mapper = cassandra.Mapper;
 Stopwatch stopwatch = new();
 
 #region generate and start servers
 
-var serverGenerator = new ServerGenerator(cassandraAddress: "127.0.0.1", cassandraPort: 9042);
+var serverGenerator = new ServerGenerator(cassandraAddress, cassandraPort);
 var statsCollector = new StatsCollector();
 stopwatch.Start();
-var servers = serverGenerator.Generate(serversPerRegionAndGameType: 5, statsCollector);
+var servers = serverGenerator.Generate(numberOfServersPerRegionAndGameType, statsCollector);
 stopwatch.Stop();
 Console.WriteLine($"generated {servers.Count()} servers in time: {stopwatch.ElapsedMilliseconds} ms");
 var serversSimulator = new ServersSimulator();
@@ -20,9 +26,9 @@ serversSimulator.SimulateServers(servers);
 
 #region create and start matchmakers
 
-var matchmakerSimulators = Enumerable.Range(0, 3).Select(_ =>
+var matchmakerSimulators = Enumerable.Range(0, numberOfMatchmakers).Select(_ =>
 {
-    var simulator = new MatchmakerSimulator(cassandraAddress: "127.0.0.1", cassandraPort: 9042);
+    var simulator = new MatchmakerSimulator(cassandraAddress, cassandraPort);
     var thread = new Thread(new ThreadStart(simulator.SimulateMatchmaker));
     thread.Start();
     return (thread, simulator);
@@ -35,10 +41,9 @@ var matchmakerSimulators = Enumerable.Range(0, 3).Select(_ =>
 var matchRequestRepository = new CassandraMatchRequestRepository(mapper, ConsistencyLevel.One);
 var matchRequestGenerator = new MatchRequestGenerator(matchRequestRepository);
 stopwatch.Restart();
-matchRequestGenerator.Generate(matchRequestsPerRegionAndGameType: 30);
+matchRequestGenerator.Generate(numberOfPlayersPerRegionAndGameType);
 stopwatch.Stop();
-var stopPlayerGenerator = DateTimeOffset.Now;
-Console.WriteLine($"generated 900 player requests in time: {stopwatch.ElapsedMilliseconds} ms");
+Console.WriteLine($"generated {numberOfPlayersPerRegionAndGameType * 30} player requests in time: {stopwatch.ElapsedMilliseconds} ms");
 #endregion
 
 #region wait for matchmakers to finish
