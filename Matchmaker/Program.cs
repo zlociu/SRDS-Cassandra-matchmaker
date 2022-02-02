@@ -30,22 +30,10 @@ Console.WriteLine($"creating 90 servers in time: {s1.ElapsedMilliseconds} ms");
 
 #region generate and save players
 
-List<PlayersSimulator> playersSimulators = new List<PlayersSimulator>{
-    new PlayersSimulator(100, 9042),
-    new PlayersSimulator(100, 9043),
-    new PlayersSimulator(100, 9044)
-};
-
-List<Task> playerTasks = new();
-
+var matchRequestRepository = new CassandraMatchRequestRepository(mapper, ConsistencyLevel.One);
+var matchRequestGenerator = new MatchRequestGenerator(matchRequestRepository);
 s1.Restart();
-
-foreach (var simulator in playersSimulators)
-{
-    playerTasks.Add(simulator.SimulatePlayers());
-}
-
-Task.WaitAll(playerTasks.ToArray());
+matchRequestGenerator.Generate(10);
 s1.Stop();
 var stopPlayerGenerator = DateTimeOffset.Now;
 Console.WriteLine($"inserting 300 player requests in time: {s1.ElapsedMilliseconds} ms");
