@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using Cassandra;
 
-var cassandra = new CassandraSetup(address: "127.0.0.1", port: 9043, replicationFactor: 3);
+var cassandra = new CassandraSetup(address: "127.0.0.1", port: 9042, replicationFactor: 3);
 var mapper = cassandra.Mapper;
 Stopwatch stopwatch = new();
 
@@ -32,18 +32,14 @@ Console.WriteLine($"generated 300 player requests in time: {stopwatch.ElapsedMil
 #region Matchmaker work
 
 List<MatchmakerSimulator> matchmakerSimulators = new List<MatchmakerSimulator>{
-    new MatchmakerSimulator(9042, ConsistencyLevel.One),
-    new MatchmakerSimulator(9043, ConsistencyLevel.One),
-    new MatchmakerSimulator(9044, ConsistencyLevel.One)
+    new MatchmakerSimulator(cassandraAddress: "127.0.0.1", cassandraPort: 9042),
+    new MatchmakerSimulator(cassandraAddress: "127.0.0.1", cassandraPort: 9042),
+    new MatchmakerSimulator(cassandraAddress: "127.0.0.1", cassandraPort: 9042)
 };
-
-List<Task> matchmakerTasks = new List<Task>();
 foreach (var simulator in matchmakerSimulators)
 {
-    matchmakerTasks.Add(simulator.SimulateMatchmaker());
+    simulator.SimulateMatchmaker();
 }
-
-Task.WaitAll(matchmakerTasks.ToArray());
 
 #endregion
 

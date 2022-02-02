@@ -22,13 +22,16 @@ public class Matchmaker
         processingOrder = GenerateProcessingOrder().ToList();
     }
 
-    public Task MatchmakerLoop()
+    public IEnumerable<(GameType, Region)> MatchmakerLoop()
     {
-        foreach (var (gameType, region) in processingOrder)
+        while (true)
         {
-            FindAndAssignMatches(gameType, region, RequestBatchSize);
+            foreach (var (gameType, region) in processingOrder)
+            {
+                FindAndAssignMatches(gameType, region, RequestBatchSize);
+                yield return (gameType, region);
+            }
         }
-        return Task.CompletedTask;
     }
 
     private IEnumerable<(GameType, Region)> GenerateProcessingOrder()
