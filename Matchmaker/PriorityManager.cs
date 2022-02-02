@@ -2,8 +2,9 @@ public class PriorityManager
 {
 
     private IMatchRequestRepository matchRequestRepository;
-    private const int priorityUpdateIntervalMillis = 250;
+    private const int priorityUpdateIntervalMillis = 1000;
     private int[] priorityThresholds = { 250, 500, 1000, 3000 };
+    public bool CanStop { get; set; } = false;
 
     public PriorityManager(
         IMatchRequestRepository matchRequestRepository
@@ -12,12 +13,12 @@ public class PriorityManager
         this.matchRequestRepository = matchRequestRepository;
     }
 
-    public async Task PriorityManagerLoop()
+    public void PriorityManagerLoop()
     {
-        while (true)
+        while (!CanStop)
         {
             UpdatePriorities();
-            await Task.Delay(priorityUpdateIntervalMillis);
+            Thread.Sleep(priorityUpdateIntervalMillis);
         }
     }
 
