@@ -1,42 +1,8 @@
 ﻿using System.Diagnostics;
 using Cassandra;
-using Cassandra.Mapping;
 
-#region Creating Cassandra keyspace and required tables if not exists
-
-MappingConfiguration.Global.Define<MatchmakerMappings>();
-//Cassandra.Diagnostics.CassandraTraceSwitch.Level = TraceLevel.Info;
-//Trace.Listeners.Add(new TextWriterTraceListener(Console.Out));
-
-var cluster = Cluster.Builder()
-                     .AddContactPoint("127.0.0.1")
-                     .WithPort(9043)
-                     .Build();
-
-var tmp = cluster.Connect();
-
-tmp.CreateKeyspaceIfNotExists("matchmaker", new Dictionary<string, string>{
-                                                { "class", ReplicationStrategies.SimpleStrategy },
-                                                { "replication_factor", "3" } 
-                                            });
-
-var session = cluster.Connect("matchmaker");
-Console.WriteLine($"{session.Keyspace}\n");
-
-IMapper mapper = new Mapper(session);
-
-mapper.DropTableIfExists("Servers");
-mapper.DropTableIfExists("MatchRequests");
-mapper.DropTableIfExists("MatchSuggestions");
-
-mapper.Execute(Server.CreateTableString);
-mapper.Execute(MatchRequest.CreateTableString);
-mapper.Execute(MatchSuggestion.CreateTableString);
-
-mapper.CreateIndex("MatchRequests", "priority");
-mapper.CreateIndex("Servers", "status");
-
-#endregion
+var cassandra = new CassandraSetup(address: "127.0.0.1", port: 9043, replicationFactor: 3);
+var mapper = cassandra.Mapper;
 
 #region create and save servers
 
@@ -51,7 +17,7 @@ List<Task> serverTasks = new();
 Stopwatch s1 = new();
 s1.Start();
 
-foreach(var simulator in serversSimulators)
+foreach (var simulator in serversSimulators)
 {
     serverTasks.Add(simulator.SimulateServers());
 }
@@ -74,7 +40,7 @@ List<Task> playerTasks = new();
 
 s1.Restart();
 
-foreach(var simulator in playersSimulators)
+foreach (var simulator in playersSimulators)
 {
     playerTasks.Add(simulator.SimulatePlayers());
 }
@@ -94,7 +60,7 @@ List<MatchmakerSimulator> matchmakerSimulators = new List<MatchmakerSimulator>{
 };
 
 List<Task> matchmakerTasks = new List<Task>();
-foreach(var simulator in matchmakerSimulators)
+foreach (var simulator in matchmakerSimulators)
 {
     matchmakerTasks.Add(simulator.SimulateMatchmaker());
 }
@@ -118,13 +84,16 @@ var p99 = Math.Round(suggestions
             .Last());
 
 var peopleErrors = suggestions.GroupBy(x => x.PlayerId).Where(x => x.Count() > 1).Count();
-var serversGroupJoinSuggestions = servers.GroupJoin( 
-                                suggestions, 
-                                e => e.Id, 
-                                u => u.ServerId, 
-                                (server, number) => new {   Server = server.Id, 
-                                                            MaxPlayers = server.MaxPlayers, 
-                                                            Players = number.Count() });
+var serversGroupJoinSuggestions = servers.GroupJoin(
+                                suggestions,
+                                e => e.Id,
+                                u => u.ServerId,
+                                (server, number) => new
+                                {
+                                    Server = server.Id,
+                                    MaxPlayers = server.MaxPlayers,
+                                    Players = number.Count()
+                                });
 
 var serverErrors = serversGroupJoinSuggestions
                     .Where(x => x.Players > x.MaxPlayers)
@@ -142,9 +111,9 @@ Console.WriteLine($"\nMatchmaker time statistics: time between send request and 
 Console.WriteLine($"  mean time: {meanRounded} ms");
 Console.WriteLine($"  max time: {max} ms");
 Console.WriteLine($"  p99 time: {p99} ms"); //two standard deviations from mean
-Console.WriteLine($"found {peopleErrors} ({Math.Round(100.0*peopleErrors/suggestions.Count(),2)}%) people with assignment to more than ONE server");
-Console.WriteLine($"found {serverErrors} ({Math.Round(100.0*serverErrors/servers.Count(),2)}%) servers with assiged more players than 'maxPlayers' property");
+Console.WriteLine($"found {peopleErrors} ({Math.Round(100.0 * peopleErrors / suggestions.Count(), 2)}%) people with assignment to more than ONE server");
+Console.WriteLine($"found {serverErrors} ({Math.Round(100.0 * serverErrors / servers.Count(), 2)}%) servers with assiged more players than 'maxPlayers' property");
 Console.WriteLine($"found {serverEmpty} empty servers");
-Console.WriteLine($"non-empty servers mean occupancy: {Math.Round(meanServerFillness * 100, 1)}%"); 
+Console.WriteLine($"non-empty servers mean occupancy: {Math.Round(meanServerFillness * 100, 1)}%");
 
 #endregion
