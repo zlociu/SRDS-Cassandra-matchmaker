@@ -53,7 +53,7 @@ public class Matchmaker
         var servers = serverRepository.GetAvailableByGameTypeAndRegion(gameType, region).ToList();
         var assignedPlayers = matchSuggestionRepository.GetByServerIds(servers.Select(s => s.Id)).ToList();
         var serverSummaries = GetServerSummaries(servers, assignedPlayers).ToList();
-        var requests = matchRequestRepository.GetByGameTypeAndRegion(gameType, region, requestLimit).ToList();
+        var requests = GetMatchRequests(gameType, region, requestLimit);
         return FindPossibleMatches(requests, serverSummaries);
     }
 
@@ -86,6 +86,18 @@ public class Matchmaker
             MaxPlayers: server.MaxPlayers,
             MeanRank: assignedPlayers.Average(p => (int?)p.PlayerRank)
         );
+    }
+
+    private IEnumerable<MatchRequest> GetMatchRequests(GameType gameType, Region region, int requestLimit)
+    {
+        var requestsWithHighestPriority = matchRequestRepository
+            .GetByPriority(4, requestLimit)
+            .ToList()
+            .Where(request => request.GameType == gameType && request.Region == region);
+        var requestsByGametypeAndRegion = matchRequestRepository
+            .GetByGameTypeAndRegion(gameType, region, requestLimit)
+            .ToList();
+        return requestsWithHighestPriority.Union(requestsByGametypeAndRegion);
     }
 
     private IEnumerable<PossibleMatch> FindPossibleMatches(IEnumerable<MatchRequest> matchRequests, IEnumerable<ServerSummary> availableServers)
