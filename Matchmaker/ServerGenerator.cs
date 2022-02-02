@@ -1,47 +1,64 @@
+using Cassandra;
+using Cassandra.Mapping;
+
 public class ServerGenerator
 {
-    private Random _rnd;
+    private string cassandraAddress;
+    private int cassandraPort;
 
-    public ServerGenerator()
+    public ServerGenerator(string cassandraAddress, int cassandraPort)
     {
-        _rnd = new Random();
+        this.cassandraAddress = cassandraAddress;
+        this.cassandraPort = cassandraPort;
     }
 
-    public IEnumerable<Server> GenerateServers(int count)
+    public List<ServerBehaviour> Generate(int serversPerRegionAndGameType, StatsCollector statsCollector)
     {
-        if (count < 1) throw new ArgumentOutOfRangeException();
-        List<Server> servers = new(count);
-
-        for (int i = 0; i < count; i++)
+        var allGameTypes = Enum.GetValues<GameType>();
+        var allRegions = Enum.GetValues<Region>();
+        var allCombinations = from gameType in allGameTypes
+                              from region in allRegions
+                              select (gameType, region);
+        var result = new List<ServerBehaviour>();
+        foreach (var (gameType, region) in allCombinations)
         {
-            Server server = new Server
-            {
-                Id = Guid.NewGuid(),
-                GameType = (_rnd.Next(12)) switch
-                {
-                    var x when x < 2 => GameType.TeamDeathmatch,
-                    var x when x < 4 => GameType.Deathmatch,
-                    var x when x < 6 => GameType.CrashSite,
-                    var x when x < 8 => GameType.Extraction,
-                    var x when x < 10 => GameType.Spears,
-                    var x when x < 12 => GameType.HunterMode,
-                    _ => GameType.TeamDeathmatch
-                },
-                MaxPlayers = _rnd.Next(3, 5) * 4,
-                Region = (_rnd.Next(5)) switch
-                {
-                    var x when x == 0 => Region.EastEurope,
-                    var x when x == 1 => Region.WestEurope,
-                    var x when x == 2 => Region.EastUS,
-                    var x when x == 3 => Region.WestUS,
-                    _ => Region.Asia
-                },
-                Status = ServerStatus.WaitingForPlayers
+            var servers = Generate(serversPerRegionAndGameType, gameType, region, statsCollector);
+            result.AddRange(servers);
+        }
+        return result;
+    }
 
-            };
+    private List<ServerBehaviour> Generate(int matchRequests, GameType gameType, Region region, StatsCollector statsCollector)
+    {
+        var servers = new List<ServerBehaviour>();
+        for (var i = 0; i < matchRequests; i++)
+        {
+            var server = GenerateServer(gameType, region, statsCollector);
             servers.Add(server);
         }
-
         return servers;
+    }
+
+    private ServerBehaviour GenerateServer(GameType gameType, Region region, StatsCollector statsCollector)
+    {
+        var cluster = Cluster.Builder()
+                             .AddContactPoint(cassandraAddress)
+                             .WithPort(cassandraPort)
+                             .Build();
+        var session = cluster.Connect("matchmaker");
+        var mapper = new Mapper(session);
+        var serverRepository = new CassandraServerRepository(mapper, ConsistencyLevel.One);
+        var matchRequestRepository = new CassandraMatchRequestRepository(mapper, ConsistencyLevel.One);
+        var matchSuggestionRepository = new CassandraMatchSuggestionRepository(mapper, ConsistencyLevel.One);
+
+        return new ServerBehaviour(
+            serverRepository,
+            matchRequestRepository,
+            matchSuggestionRepository,
+            statsCollector,
+            region,
+            gameType,
+            maxPlayers: 10
+        );
     }
 }

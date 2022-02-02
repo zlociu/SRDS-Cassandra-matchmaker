@@ -26,7 +26,7 @@ public class CassandraServerRepository : IServerRepository
 
     public void Remove(Guid serverId, GameType gameType, Region region)
     {
-        Cql cql = new Cql($"WHERE gametype=? AND region=? AND serverid=?",
+        Cql cql = new Cql($"WHERE gametype=? AND region=? AND id=?",
             (int)gameType,
             (int)region,
             serverId).WithOptions(x => x.SetConsistencyLevel(_consistencyLevel));
@@ -35,7 +35,7 @@ public class CassandraServerRepository : IServerRepository
 
     public void SetStatus(Guid serverId, GameType gameType, Region region, ServerStatus status)
     {
-        Cql cql = new Cql($"SET status=? WHERE gametype=? AND region=? AND serverid=?",
+        Cql cql = new Cql($"SET status=? WHERE gametype=? AND region=? AND id=?",
             (int)status,
             (int)gameType,
             (int)region,

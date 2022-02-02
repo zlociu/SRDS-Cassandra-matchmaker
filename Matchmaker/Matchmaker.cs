@@ -1,7 +1,7 @@
 public class Matchmaker
 {
     private const double PriorityWeight = 100.0;
-    private const double RankWeight = 1.0;
+    private const double RankWeight = 0;
     private const double FullnessWeight = 200.0;
     private const double MinimalMatchQuality = 0;
     private const int RequestBatchSize = 100;
@@ -22,13 +22,16 @@ public class Matchmaker
         processingOrder = GenerateProcessingOrder().ToList();
     }
 
-    public Task MatchmakerLoop()
+    public IEnumerable<(GameType, Region)> MatchmakerLoop()
     {
-        foreach (var (gameType, region) in processingOrder)
+        while (true)
         {
-            FindAndAssignMatches(gameType, region, RequestBatchSize);
+            foreach (var (gameType, region) in processingOrder)
+            {
+                FindAndAssignMatches(gameType, region, RequestBatchSize);
+                yield return (gameType, region);
+            }
         }
-        return Task.CompletedTask;
     }
 
     private IEnumerable<(GameType, Region)> GenerateProcessingOrder()

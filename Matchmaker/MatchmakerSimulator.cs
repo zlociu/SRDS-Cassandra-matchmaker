@@ -3,33 +3,41 @@ using Cassandra.Mapping;
 
 public class MatchmakerSimulator
 {
-    private int _cassandraPort;
-    private ConsistencyLevel _consistencyLevel;
+    private IMapper mapper;
+    public bool CanStop { get; set; } = false;
 
-    public MatchmakerSimulator(int cassandraPort, ConsistencyLevel consistencyLevel = ConsistencyLevel.One)
-    {   
-        
-        _cassandraPort = cassandraPort;
-        _consistencyLevel = consistencyLevel;
+    public MatchmakerSimulator(string cassandraAddress, int cassandraPort)
+    {
+        var cluster = Cluster.Builder()
+                             .AddContactPoint(cassandraAddress)
+                             .WithPort(cassandraPort)
+                             .Build();
+        var session = cluster.Connect("matchmaker");
+        mapper = new Mapper(session);
     }
 
-    public async Task SimulateMatchmaker()
+    public void SimulateMatchmaker()
     {
-        await Task.Yield();
+        var matchmaker = CreateMatchmaker();
+        var matchmakerLoop = matchmaker.MatchmakerLoop().GetEnumerator();
+        var remainingRequests = 0;
+        do
+        {
+            matchmakerLoop.MoveNext();
+            remainingRequests = mapper.Fetch<MatchRequest>().ToList().Count();
+        } while (remainingRequests > 0 || !CanStop);
+    }
 
-        var cluster = Cluster.Builder()
-                     .AddContactPoint("127.0.0.1")
-                     .WithPort(_cassandraPort)
-                     .Build();
+    private Matchmaker CreateMatchmaker()
+    {
+        var serverRepository = new CassandraServerRepository(mapper, ConsistencyLevel.One);
+        var matchRequestRepository = new CassandraMatchRequestRepository(mapper, ConsistencyLevel.One);
+        var matchSuggestionRepository = new CassandraMatchSuggestionRepository(mapper, ConsistencyLevel.One);
 
-        var session = cluster.Connect("matchmaker");
-        
-        IMapper mapper = new Mapper(session);
-
-        CassandraMatchRequestRepository mReqRepo = new(mapper, _consistencyLevel);
-        CassandraMatchSuggestionRepository mSugRepo = new(mapper, _consistencyLevel);
-        CassandraServerRepository serverRepo = new(mapper, _consistencyLevel);
-        Matchmaker m1 = new Matchmaker(serverRepo, mReqRepo, mSugRepo);
-        await m1.MatchmakerLoop();
+        return new Matchmaker(
+            serverRepository,
+            matchRequestRepository,
+            matchSuggestionRepository
+        );
     }
 }
