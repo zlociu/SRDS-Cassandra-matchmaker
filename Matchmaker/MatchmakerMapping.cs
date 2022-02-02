@@ -6,16 +6,6 @@ public class MatchmakerMappings : Mappings
 
     public MatchmakerMappings()
     {
-        /*
-        For<Player>()
-            .TableName("players")
-            .PartitionKey(u => u.Id)
-            .Column(c => c.Id, n => n.WithName("id"))
-            .Column(c => c.GameType, n=> n.WithName("gametype").WithDbType<int>())
-            .Column(c => c.Region, n => n.WithName("region"))
-            .Column(c => c.Rank, n => n.WithName("rank"));
-        */
-
         For<Server>()
             .TableName("Servers")
             .PartitionKey(u => u.GameType, u => u.Region)

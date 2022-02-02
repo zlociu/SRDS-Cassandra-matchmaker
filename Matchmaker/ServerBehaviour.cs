@@ -3,6 +3,7 @@ public class ServerBehaviour
     private IServerRepository serverRepository;
     private IMatchRequestRepository matchRequestRepository;
     private IMatchSuggestionRepository matchSuggestionRepository;
+    private StatsCollector statsCollector;
     private Server server;
     private const int playerCheckIntervalMillis = 100;
 
@@ -10,6 +11,7 @@ public class ServerBehaviour
         IServerRepository serverRepository,
         IMatchRequestRepository matchRequestRepository,
         IMatchSuggestionRepository matchSuggestionRepository,
+        StatsCollector statsCollector,
         Region region,
         GameType gameType,
         int maxPlayers
@@ -18,6 +20,7 @@ public class ServerBehaviour
         this.serverRepository = serverRepository;
         this.matchRequestRepository = matchRequestRepository;
         this.matchSuggestionRepository = matchSuggestionRepository;
+        this.statsCollector = statsCollector;
         server = Register(region, gameType, maxPlayers);
     }
 
@@ -78,7 +81,11 @@ public class ServerBehaviour
 
     private void AcceptPlayers(List<MatchSuggestion> players)
     {
-        // TODO: callback to players
+        var currentTime = DateTimeOffset.Now;
+        foreach (var player in players)
+        {
+            statsCollector.RecordPlayerWaitTime(player, currentTime);
+        }
     }
 
     private void RestoreMatchRequests(List<MatchSuggestion> matchSuggestions)
