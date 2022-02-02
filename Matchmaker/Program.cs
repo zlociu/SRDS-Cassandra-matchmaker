@@ -34,11 +34,15 @@ var matchmakerSimulators = Enumerable.Range(0, numberOfMatchmakers).Select(_ =>
     return (thread, simulator);
 }).ToList();
 
+var matchRequestRepository = new CassandraMatchRequestRepository(mapper, ConsistencyLevel.One);
+var priorityManager = new PriorityManager(matchRequestRepository);
+var priorityManagerThread = new Thread(new ThreadStart(priorityManager.PriorityManagerLoop));
+priorityManagerThread.Start();
+
 #endregion
 
 #region generate and save match requests
 
-var matchRequestRepository = new CassandraMatchRequestRepository(mapper, ConsistencyLevel.One);
 var matchRequestGenerator = new MatchRequestGenerator(matchRequestRepository);
 stopwatch.Restart();
 matchRequestGenerator.Generate(numberOfPlayersPerRegionAndGameType);
@@ -53,6 +57,8 @@ foreach (var (thread, simulator) in matchmakerSimulators)
     simulator.CanStop = true;
     thread.Join();
 }
+priorityManager.CanStop = true;
+priorityManagerThread.Join();
 
 #endregion
 
