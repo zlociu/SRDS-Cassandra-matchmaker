@@ -4,6 +4,7 @@ using Cassandra.Mapping;
 public class MatchmakerSimulator
 {
     private IMapper mapper;
+    public bool CanStop { get; set; } = false;
 
     public MatchmakerSimulator(string cassandraAddress, int cassandraPort)
     {
@@ -24,7 +25,7 @@ public class MatchmakerSimulator
         {
             matchmakerLoop.MoveNext();
             remainingRequests = mapper.Fetch<MatchRequest>().ToList().Count();
-        } while (remainingRequests > 0);
+        } while (remainingRequests > 0 || !CanStop);
     }
 
     private Matchmaker CreateMatchmaker()
