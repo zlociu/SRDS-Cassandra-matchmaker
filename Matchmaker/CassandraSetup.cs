@@ -1,9 +1,9 @@
 using Cassandra;
 using Cassandra.Mapping;
+using Cassandra.Data.Linq;
 
 public class CassandraSetup
 {
-
     public IMapper Mapper { get; }
 
     public CassandraSetup(string address, int port, int replicationFactor)
@@ -18,23 +18,26 @@ public class CassandraSetup
                              .Build();
 
         var session = cluster.Connect();
-
-        session.CreateKeyspaceIfNotExists("matchmaker", new Dictionary<string, string>{
-                                                { "class", ReplicationStrategies.SimpleStrategy },
-                                                { "replication_factor", $"{replicationFactor}" }
-                                            });
-
+        session.CreateKeyspaceIfNotExists("matchmaker",
+            new Dictionary<string, string>{
+                { "class", ReplicationStrategies.SimpleStrategy },
+                { "replication_factor", $"{replicationFactor}" }
+            });
         session = cluster.Connect("matchmaker");
 
         Mapper = new Mapper(session);
 
+        var serversTable = new Table<Server>(session);
         Mapper.DropTableIfExists("Servers");
-        Mapper.DropTableIfExists("MatchRequests");
-        Mapper.DropTableIfExists("MatchSuggestions");
+        serversTable.CreateIfNotExists();
 
-        Mapper.Execute(Server.CreateTableString);
-        Mapper.Execute(MatchRequest.CreateTableString);
-        Mapper.Execute(MatchSuggestion.CreateTableString);
+        var matchRequestsTable = new Table<MatchRequest>(session);
+        Mapper.DropTableIfExists("MatchRequests");
+        matchRequestsTable.CreateIfNotExists();
+
+        var matchSuggestionsTable = new Table<MatchSuggestion>(session);
+        Mapper.DropTableIfExists("MatchSuggestions");
+        matchSuggestionsTable.CreateIfNotExists();
 
         Mapper.CreateIndex("MatchRequests", "priority");
         Mapper.CreateIndex("Servers", "status");
