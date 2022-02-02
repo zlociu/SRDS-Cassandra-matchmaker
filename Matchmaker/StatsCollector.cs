@@ -22,15 +22,15 @@ public class StatsCollector
         System.Console.WriteLine($"Number of players who joined a game: {recordsByPlayerId.Count()}");
         System.Console.WriteLine($"Number of players assigned to multiple servers: {playersAssignedToMultipleServers}");
         System.Console.WriteLine("--- Time to assign ---");
-        System.Console.WriteLine($"Mean: {timeToAssignStats.Mean}");
-        System.Console.WriteLine($"Min: {timeToAssignStats.Min}");
-        System.Console.WriteLine($"Max: {timeToAssignStats.Max}");
-        System.Console.WriteLine($"P99: {timeToAssignStats.P99}");
+        System.Console.WriteLine($"Mean: {timeToAssignStats.Mean} ms");
+        System.Console.WriteLine($"Min: {timeToAssignStats.Min} ms");
+        System.Console.WriteLine($"Max: {timeToAssignStats.Max} ms");
+        System.Console.WriteLine($"P99: {timeToAssignStats.P99} ms");
         System.Console.WriteLine("--- Time to play ---");
-        System.Console.WriteLine($"Mean: {timeToPlayStats.Mean}");
-        System.Console.WriteLine($"Min: {timeToPlayStats.Min}");
-        System.Console.WriteLine($"Max: {timeToPlayStats.Max}");
-        System.Console.WriteLine($"P99: {timeToPlayStats.P99}");
+        System.Console.WriteLine($"Mean: {timeToPlayStats.Mean} ms");
+        System.Console.WriteLine($"Min: {timeToPlayStats.Min} ms");
+        System.Console.WriteLine($"Max: {timeToPlayStats.Max} ms");
+        System.Console.WriteLine($"P99: {timeToPlayStats.P99} ms");
     }
 
     private Stats GetStats(IEnumerable<double> values)
