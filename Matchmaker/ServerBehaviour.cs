@@ -29,10 +29,10 @@ public class ServerBehaviour
         Unregister();
     }
 
-    public void StartNewGame()
+    public async Task StartNewGame()
     {
         SetStatus(ServerStatus.WaitingForPlayers);
-        var assignedPlayers = WaitForPlayers();
+        var assignedPlayers = await WaitForPlayers();
         SetStatus(ServerStatus.InGame);
         matchSuggestionRepository.RemoveByServerId(server.Id);
         var orderedPlayers = assignedPlayers.OrderBy(player => player.RequestTimestamp);
@@ -40,7 +40,7 @@ public class ServerBehaviour
         var excessivePlayers = orderedPlayers.Skip(server.MaxPlayers);
         AcceptPlayers(playersWithinLimit.ToList());
         RestoreMatchRequests(excessivePlayers.ToList());
-        PlayGame();
+        await PlayGame();
         SetStatus(ServerStatus.Idle);
     }
 
@@ -68,12 +68,12 @@ public class ServerBehaviour
         serverRepository.SetStatus(server.Id, server.GameType, server.Region, newStatus);
     }
 
-    private List<MatchSuggestion> WaitForPlayers()
+    private async Task<List<MatchSuggestion>> WaitForPlayers()
     {
         var players = new List<MatchSuggestion>();
         while (players.Count() < server.MaxPlayers)
         {
-            Thread.Sleep(playerCheckIntervalMillis);
+            await Task.Delay(playerCheckIntervalMillis);
             players = matchSuggestionRepository.GetByServerIds(new List<Guid> { server.Id }).ToList();
         }
         return players;
@@ -96,9 +96,9 @@ public class ServerBehaviour
         }
     }
 
-    private void PlayGame()
+    private async Task PlayGame()
     {
         var gameDurationMillis = 2 * 60 * 1000; // 2 min
-        Thread.Sleep(gameDurationMillis);
+        await Task.Delay(gameDurationMillis);
     }
 }

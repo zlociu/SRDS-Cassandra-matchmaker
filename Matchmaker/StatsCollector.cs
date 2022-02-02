@@ -1,7 +1,9 @@
+using System.Collections.Concurrent;
+
 public class StatsCollector
 {
 
-    private List<PlayerWaitTime> playerWaitTimes = new();
+    private ConcurrentBag<PlayerWaitTime> playerWaitTimes = new();
 
     public void RecordPlayerWaitTime(MatchSuggestion matchSuggestion, DateTimeOffset gameStartTime)
     {
